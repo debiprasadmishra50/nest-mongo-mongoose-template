@@ -1,4 +1,4 @@
-# NestJS Starter Template
+# NestJS Mongo Starter Template
 
 This is a template that includes the authentication, authorisation, google-authentication, mailing functionality along with database communication
 
