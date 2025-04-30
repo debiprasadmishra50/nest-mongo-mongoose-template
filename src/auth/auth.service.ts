@@ -433,7 +433,7 @@ export class AuthService {
 
       return { newUser, activateToken, sendMail: true };
     } catch (err) {
-      if (err.code === "23505") throw new ConflictException("User already exists");
+      if (err.code === 11000) throw new ConflictException("User already exists");
       else throw new InternalServerErrorException();
     }
   }
