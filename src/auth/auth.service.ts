@@ -415,7 +415,7 @@ export class AuthService {
    * @returns newly created user object and activation token
    */
   private async createOrFindUserGoogle(user: User) {
-    const existingUser = await this.userModel.findOne({ where: { googleID: user.id } });
+    const existingUser = await this.userModel.findOne({ googleID: user.id });
 
     if (existingUser) return { existingUser, sendMail: false };
 
