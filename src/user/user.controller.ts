@@ -28,8 +28,6 @@ import { User } from "./entities/user.schema";
  * It creates a route - "/user"
  */
 @Controller("users")
-@UseGuards(JwtAuthGuard)
-// @UseInterceptors(ClassSerializerInterceptor)
 @ApiTags("User")
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: "In case user is not logged in" })

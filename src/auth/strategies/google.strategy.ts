@@ -7,9 +7,9 @@ import { Strategy, VerifyCallback } from "passport-google-oauth20";
 export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   constructor(private readonly configService: ConfigService) {
     super({
-      clientID: configService.get("GOOGLE_CLIENT_ID"),
-      clientSecret: configService.get("GOOGLE_CLIENT_SECRET"),
-      callbackURL: "http://localhost:3000/api/v1/auth/google/callback",
+      clientID: configService.get<string>("GOOGLE_CLIENT_ID"),
+      clientSecret: configService.get<string>("GOOGLE_CLIENT_SECRET"),
+      callbackURL: `http://localhost:${configService.get<string>("PORT") || 3000}/api/v1/auth/google/callback`,
       // FIXME: callbackURL will be a front-end url eventually, for backend testing you may add this URL
       scope: ["email", "profile"],
     });
@@ -18,7 +18,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
     accessToken: string,
     refreshToken: string,
     profile: any,
-    done: VerifyCallback,
+    done: VerifyCallback
   ): Promise<any> {
     // console.log(profile, accessToken, refreshToken);
 

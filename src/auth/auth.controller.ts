@@ -42,6 +42,7 @@ import { UserResponseDto } from "./dto-response/user-response.dto";
 import { MessageResponseDto } from "./dto-response/message-response.dto";
 import { LogoutResponseDto } from "./dto-response/logout-response.dto";
 import { GoogleAuthGuard } from "./guards/google-auth.guard";
+import { Public } from "../shared/decorators/public.decorator";
 
 /**
  * AuthController is responsible for handling incoming requests specific to Authentication related APIs and returning responses to the client.
@@ -60,6 +61,7 @@ export class AuthController {
    * @returns newly created user object, token for authentication and response status.
    * @throws ConflictException in case of email already exists in the database.
    */
+  @Public()
   @Post("signup")
   @ApiOperation({
     description: "Api to register new users.",
@@ -84,7 +86,6 @@ export class AuthController {
    * @throws UnauthorizedException with message in case user is not logged in.
    */
   @Patch("activate/:token")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     description: "Api to activate new user account and sends the activation mail to user",
     summary: "Api to activate new user account and sends the activation mail to user",
@@ -108,6 +109,7 @@ export class AuthController {
    * @returns newly logged in user object, token for authentication and response status.
    * @throws UnauthorizedException with message in case user is not logged in.
    */
+  @Public()
   @Post("login")
   @UseGuards(LocalAuthGuard)
   @ApiOperation({
@@ -174,7 +176,6 @@ export class AuthController {
    * @throws UnauthorizedException with message in case user is not logged in.
    */
   @Get("logout")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     description: "Api to logout logged in user.",
     summary: "Api to logout logged in user.",
@@ -268,7 +269,6 @@ export class AuthController {
    * @throws UnauthorizedException if User is not logged in OR If input password and user password does not match.
    */
   @Patch("update-my-password")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     description: "Api to change password of current logged in user.",
     summary: "Api to change password of current logged in user.",
@@ -300,7 +300,6 @@ export class AuthController {
    * @throws UnauthorizedException if User is not logged in.
    */
   @Delete("delete-me")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     description: "Api to delete logged in user's account",
     summary: "Api to delete logged in user's account.",
@@ -325,7 +324,6 @@ export class AuthController {
    * @returns response message "Activation mail sent successfully!" and status.
    */
   @Get("send-activation-mail")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     description: "Api to send account activation mail.",
     summary: "Api to send account activation mail.",
