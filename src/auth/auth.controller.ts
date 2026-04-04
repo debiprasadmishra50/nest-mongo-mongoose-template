@@ -48,8 +48,7 @@ import { GoogleAuthGuard } from "./guards/google-auth.guard";
  * it creates a route - "/auth"
  */
 @Controller("auth")
-// @UseInterceptors(ClassSerializerInterceptor)
-@ApiTags("auth")
+@ApiTags("Auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

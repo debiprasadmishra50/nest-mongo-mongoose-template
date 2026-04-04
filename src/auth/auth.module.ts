@@ -10,6 +10,7 @@ import { MailModule } from "../mail/mail.module";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "../user/entities/user.schema";
+import { CsrfController } from "./csrf.controller";
 // import { User as UserDoc, UserSchema } from "../user/entities/user.schema";
 
 /**
@@ -40,7 +41,7 @@ import { User, UserSchema } from "../user/entities/user.schema";
     }),
     MailModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, CsrfController],
   providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy],
   exports: [AuthService, PassportModule, JwtStrategy],
 })
