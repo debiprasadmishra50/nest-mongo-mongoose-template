@@ -13,17 +13,30 @@ import mongoSanitize from "express-mongo-sanitize";
 
 import { AppModule } from "./app.module";
 import { NestExpressApplication } from "@nestjs/platform-express";
+import { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 
 /**
  * function for bootstraping the nest application
  */
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    cors: true,
+    // cors: true,
     bodyParser: true,
     logger: ["error", "fatal", "log", "verbose", "warn", "debug"],
   });
   const configService = app.get<ConfigService>(ConfigService);
+  const stage = configService.get<string>("STAGE")?.toLowerCase() || "dev";
+  const isHostedEnvironment =
+    ["uat", "prod"].includes(stage) || Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+  const configuredFrontendOrigin = configService.get<string>("FR_BASE_URL");
+  const allowedOrigins = Array.from(
+    new Set(
+      ["http://localhost:3000", "http://localhost:8000", configuredFrontendOrigin].filter(
+        (origin): origin is string => Boolean(origin)
+      )
+    )
+  );
+  // const expressApp = app.getHttpAdapter() as unknown as express.Application;
 
   app.setGlobalPrefix("/api");
   app.enableVersioning({
@@ -31,11 +44,21 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
 
-  app.enableCors();
+  const corsOptions: CorsOptions = {
+    // Allow local frontend origins plus the exact hosted Vercel origin for the cross-site CSRF flow.
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "X-Requested-With", "X-CSRF-Token"],
+    exposedHeaders: ["Content-Type", "Authorization", "Cache-Control", "X-Requested-With", "X-CSRF-Token"],
+    credentials: true,
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
+    preflightContinue: false,
+  };
+
+  app.enableCors(corsOptions);
   app.use(cookieParser());
   app.use(compression());
-
-  app.use(mongoSanitize());
 
   app.use(json({ limit: "50kb" }));
   app.use(urlencoded({ extended: true, limit: "50kb" }));
@@ -44,14 +67,20 @@ async function bootstrap() {
   app.set("trust proxy", 1); // trust first proxy
 
   const ignoreMethods =
-    configService.get<string>("STAGE") == "dev"
-      ? ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PATCH", "PUT"] // for devlopment we ignoring all
-      : ["GET", "HEAD", "OPTIONS", "DELETE"];
+    stage === "dev"
+      ? ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PATCH", "PUT"] // For local development, keep CSRF fully relaxed.
+      : ["GET", "HEAD", "OPTIONS"];
   app.use(
     csurf({
-      cookie: { httpOnly: true, secure: true },
+      cookie: {
+        // Keep the secret cookie inaccessible to JavaScript; the frontend only needs the returned token value.
+        httpOnly: true,
+        // Hosted cross-site browser requests require SameSite=None and Secure=true for the CSRF secret cookie.
+        secure: isHostedEnvironment,
+        sameSite: isHostedEnvironment ? "none" : "lax",
+      },
       ignoreMethods,
-    }),
+    })
   );
   app.use(
     helmet({
@@ -63,42 +92,58 @@ async function bootstrap() {
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          defaultSrc: ["'self'", "https://polyfill.io", "https://*.cloudflare.com", "http://127.0.0.1:3000/"],
+          defaultSrc: [
+            "'self'",
+            "https://polyfill.io",
+            "https://*.cloudflare.com",
+            "http://127.0.0.1:3000/",
+            "http://127.0.0.1:8000/",
+            "http://localhost:8000/",
+            "http://localhost:3000/",
+          ],
           baseUri: ["'self'"],
           scriptSrc: [
             "'self'",
             "http://127.0.0.1:3000/",
+            "http://127.0.0.1:8000/",
+            "http://localhost:8000/",
+            "http://localhost:3000/",
             "https://*.cloudflare.com",
             "https://polyfill.io",
-            `https: 'unsafe-inline'`,
+            `https: 'unsafe-inline'`, // FIXME: use script-src CSP NONCES
+            /* 
+              CSP NONCES https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_inline
+             */
           ],
           styleSrc: ["'self'", "https:", "http:", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "blob:", "validator.swagger.io"],
+          imgSrc: ["'self'", "blob:", "validator.swagger.io"],
           fontSrc: ["'self'", "https:", "data:"],
           childSrc: ["'self'", "blob:"],
           styleSrcAttr: ["'self'", "'unsafe-inline'", "http:"],
           frameSrc: ["'self'"],
         },
       },
+      // you don't control the link on the pages, or know that you don't want to leak information to other domains
       dnsPrefetchControl: { allow: false }, // Changed based on the last middleware to disable DNS prefetching
-      frameguard: { action: "deny" },
-      hidePoweredBy: true,
-      ieNoOpen: true,
-      noSniff: true,
-      permittedCrossDomainPolicies: { permittedPolicies: "none" },
-      referrerPolicy: { policy: "no-referrer" },
-      xssFilter: true,
-      crossOriginEmbedderPolicy: true,
+      frameguard: { action: "deny" }, // Disable clickjacking
+      hidePoweredBy: true, // Hides the X-Powered-By header to make the server less identifiable.
+      ieNoOpen: true, // Prevents Internet Explorer from executing downloads in the site’s context.
+      noSniff: true, // Prevents browsers from MIME type sniffing, reducing exposure to certain attacks.
+      permittedCrossDomainPolicies: { permittedPolicies: "none" }, // Prevents Adobe Flash and Acrobat from loading cross-domain data.
+      referrerPolicy: { policy: "no-referrer" }, // Protects against referrer leakage.
+      xssFilter: true, // Enables the basic XSS protection in older browsers.
+      // Configures Cross-Origin settings to strengthen resource isolation and mitigate certain side-channel attacks.
       crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-      crossOriginResourcePolicy: { policy: "same-site" },
+      crossOriginResourcePolicy: { policy: "cross-origin" }, // ← was "same-site"
+      crossOriginEmbedderPolicy: false, // ← was true, blocks cross-origin resources
       originAgentCluster: true,
-    }),
+    })
   );
 
-  app.use((req: any, res: any, next: any) => {
+  app.use((_req: any, res: any, next: any) => {
     res.setHeader(
       "Permissions-Policy",
-      'fullscreen=(self), camera=(), geolocation=(self "https://*example.com"), autoplay=(), payment=()',
+      'fullscreen=(self), camera=(), geolocation=(self "https://*example.com"), autoplay=(), payment=(), microphone=()'
     );
     next();
   });
@@ -106,8 +151,8 @@ async function bootstrap() {
   app.use(xssClean());
   app.use(hpp());
 
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
-  // app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.useGlobalPipes(new ValidationPipe({ transform: true, stopAtFirstError: true }));
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   /* FIXME:
     ##########################
