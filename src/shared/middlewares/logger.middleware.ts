@@ -19,13 +19,17 @@ export class LoggerMiddleware implements NestMiddleware {
       const contentLength = res.get("content-length");
       const end = Date.now();
 
-      if (statusCode.toString().match(/(5|4)/))
+      if (statusCode.toString().startsWith("5") || statusCode.toString().startsWith("4"))
         this.logger.error(
-          `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent} ${ip} - ${end - start}ms`,
+          `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent} ${ip} - ${end - start}ms`
+        );
+      else if (statusCode.toString().startsWith("3"))
+        this.logger.warn(
+          `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent} ${ip} - ${end - start}ms`
         );
       else
         this.logger.log(
-          `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent} ${ip} - ${end - start}ms`,
+          `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent} ${ip} - ${end - start}ms`
         );
     });
 

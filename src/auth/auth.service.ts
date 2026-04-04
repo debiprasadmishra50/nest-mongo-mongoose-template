@@ -20,8 +20,8 @@ import { LoginUserDto } from "./dto/login-user.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { UpdateMyPasswordDto } from "./dto/update-password.dto";
 import { User, UserDocument } from "../user/entities/user.schema";
-import { argon2hash, argon2verify } from "../utils/hashes/argon2";
-import { sha256, tokenCreate } from "../utils/hashes/hash";
+import { argon2hash, argon2verify } from "../shared/utils/hashes/argon2";
+import { sha256, tokenCreate } from "../shared/utils/hashes/hash";
 import { InjectLogger } from "../shared/decorators/logger.decorator";
 
 /**

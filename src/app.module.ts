@@ -6,7 +6,7 @@ import { WinstonModule } from "nest-winston";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { LoggerMiddleware } from "./shared/middlewares/logger.middleware";
-import { envSchema } from "./utils/env.validation";
+import { envSchema } from "./shared/utils/env.validation";
 import { AuthModule } from "./auth/auth.module";
 import { MailModule } from "./mail/mail.module";
 import { UserModule } from "./user/user.module";
